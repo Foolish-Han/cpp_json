@@ -1,0 +1,1 @@
+/usr/bin/cc -rdynamic -Wl,--dependency-file=CMakeFiles/leptjson_test.dir/link.d CMakeFiles/leptjson_test.dir/test.c.o -o leptjson_test  libleptjson.a
