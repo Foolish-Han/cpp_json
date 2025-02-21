@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/Foolish-Han/cpp_projects/cpp_json/build",
+  "command": "/usr/bin/cc    -o CMakeFiles/leptjson.dir/leptjson.c.o -c /home/Foolish-Han/cpp_projects/cpp_json/leptjson.c",
+  "file": "/home/Foolish-Han/cpp_projects/cpp_json/leptjson.c",
+  "output": "CMakeFiles/leptjson.dir/leptjson.c.o"
+},
+{
+  "directory": "/home/Foolish-Han/cpp_projects/cpp_json/build",
+  "command": "/usr/bin/cc    -o CMakeFiles/leptjson_test.dir/test.c.o -c /home/Foolish-Han/cpp_projects/cpp_json/test.c",
+  "file": "/home/Foolish-Han/cpp_projects/cpp_json/test.c",
+  "output": "CMakeFiles/leptjson_test.dir/test.c.o"
+}
+]

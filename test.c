@@ -26,43 +26,75 @@ static int test_pass = 0;
 #define EXPECT_EQ_DOUBLE(expect, actual)                                       \
   EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%.17g")
 
-#define TEST_LITERAL(expect_type, json)                                        \
-  do {                                                                         \
-    lept_value v;                                                              \
-    v.type = LEPT_FALSE;                                                       \
-    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));                        \
-    EXPECT_EQ_INT(expect_type, lept_get_type(&v));                             \
-  } while (0)
+#define EXPECT_EQ_STRING(expect, actual, alength)                              \
+  EXPECT_EQ_BASE(sizeof(expect) - 1 == alength &&                              \
+                     memcmp(expect, actual, alength) == 0,                     \
+                 expect, actual, "%s")
+
+#define EXPECT_TRUE(actual) EXPECT_EQ_BASE(actual != 0, "true", "false", "%s")
+
+#define EXPECT_FALSE(actual) EXPECT_EQ_BASE(actual == 0, "false", "true", "%s")
 
 #define TEST_NUMBER(expect, json)                                              \
   do {                                                                         \
     lept_value v;                                                              \
+    lept_init(&v);                                                             \
+    lept_set_boolean(&v, 0);                                                   \
     EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));                        \
     EXPECT_EQ_INT(LEPT_NUMBER, lept_get_type(&v));                             \
     EXPECT_EQ_DOUBLE(expect, lept_get_number(&v));                             \
+    lept_free(&v);                                                             \
+  } while (0)
+
+#define TEST_STRING(expect, json)                                              \
+  do {                                                                         \
+    lept_value v;                                                              \
+    lept_init(&v);                                                             \
+    lept_set_boolean(&v, 0);                                                   \
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, json));                        \
+    EXPECT_EQ_INT(LEPT_STRING, lept_get_type(&v));                             \
+    EXPECT_EQ_STRING(expect, lept_get_string(&v), lept_get_string_length(&v)); \
+    lept_free(&v);                                                             \
   } while (0)
 
 #define TEST_ERROR(error, json)                                                \
   do {                                                                         \
     lept_value v;                                                              \
-    v.type = LEPT_FALSE;                                                       \
+    lept_init(&v);                                                             \
+    lept_set_boolean(&v, 0);                                                   \
     EXPECT_EQ_INT(error, lept_parse(&v, json));                                \
     EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));                               \
+    lept_free(&v);                                                             \
   } while (0)
 
 static void test_parse_null() {
   printf("test_parse_null:\n");
-  TEST_LITERAL(LEPT_NULL, "null");
+  lept_value v;
+  lept_init(&v);
+  lept_set_boolean(&v, 0);
+  EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "null"));
+  EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+  lept_free(&v);
 }
 
 static void test_parse_true() {
   printf("test parse true:\n");
-  TEST_LITERAL(LEPT_TRUE, "true");
+  lept_value v;
+  lept_init(&v);
+  lept_set_boolean(&v, 0);
+  EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "true"));
+  EXPECT_EQ_INT(LEPT_TRUE, lept_get_type(&v));
+  lept_free(&v);
 }
 
 static void test_parse_false() {
   printf("test_parse_false:\n");
-  TEST_LITERAL(LEPT_FALSE, "false");
+  lept_value v;
+  lept_init(&v);
+  lept_set_boolean(&v, 1);
+  EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "false"));
+  EXPECT_EQ_INT(LEPT_FALSE, lept_get_type(&v));
+  lept_free(&v);
 }
 
 static void test_parse_number() {
@@ -102,6 +134,17 @@ static void test_parse_number() {
   TEST_NUMBER(-1.7976931348623157e+308, "-1.7976931348623157e+308");
 }
 
+static void test_parse_string() {
+  printf("test_parse_string:\n");
+  TEST_STRING("", "\"\"");
+  TEST_STRING("Hello", "\"Hello\"");
+#if 1
+  TEST_STRING("Hello\nWorld", "\"Hello\\nWorld\"");
+  TEST_STRING("\" \\ / \b \f \n \r \t",
+              "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
+#endif
+}
+
 static void test_parse_expect_value() {
   printf("test_parse_expect_value:\n");
   TEST_ERROR(LEPT_PARSE_EXPECT_VALUE, "");
@@ -114,8 +157,7 @@ static void test_parse_invalid_value() {
   TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "?");
 
 #if 1
-  /* invalid number */
-  TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "+0");
+  /* invalid number */ TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "+0");
   TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "+1");
   TEST_ERROR(LEPT_PARSE_INVALID_VALUE,
              ".123"); /* at least one digit berfore '.' */
@@ -147,15 +189,88 @@ static void test_parse_number_too_big() {
 #endif
 }
 
+static void test_pasrse_missing_quotatioin_mark() {
+  printf("test_pasrse_missing_quotatioin_mark:\n");
+  TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"");
+  TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"abc");
+}
+
+static void test_parse_invalid_string_escape() {
+#if 1
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
+#endif
+}
+
+static void test_parse_invalid_string_char() {
+#if 0
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+#endif /* if 0 */
+}
+
+static void test_access_null() {
+  printf("test_access_null:\n");
+  lept_value v;
+  lept_init(&v);
+  lept_set_string(&v, "a", 1);
+  lept_set_null(&v);
+  EXPECT_EQ_INT(LEPT_NULL, lept_get_type(&v));
+  lept_free(&v);
+}
+
+static void test_access_boolean() {
+  printf("test_access_boolean:\n");
+  lept_value v;
+  lept_init(&v);
+  lept_set_string(&v, "a", 1);
+  lept_set_boolean(&v, 1);
+  EXPECT_TRUE(lept_get_boolean(&v));
+  lept_set_boolean(&v, 0);
+  EXPECT_FALSE(lept_get_boolean(&v));
+  lept_free(&v);
+}
+
+static void test_access_number() {
+  printf("test_access_number:\n");
+  lept_value v;
+  lept_init(&v);
+  lept_set_string(&v, "a", 1);
+  lept_set_number(&v, 1.7976931348623157);
+  EXPECT_EQ_DOUBLE(1.7976931348623157, lept_get_number(&v));
+  lept_free(&v);
+}
+
+static void test_access_string() {
+  printf("test_access_string:\n");
+  lept_value v;
+  lept_init(&v);
+  lept_set_string(&v, "", 0);
+  EXPECT_EQ_STRING("", lept_get_string(&v), lept_get_string_length(&v));
+  lept_set_string(&v, "Hello", 5);
+  EXPECT_EQ_STRING("Hello", lept_get_string(&v), lept_get_string_length(&v));
+  lept_free(&v);
+}
 static void test_parse() {
-  test_parse_expect_value();
   test_parse_null();
-  test_parse_invalid_value();
-  test_parse_root_not_singular();
   test_parse_true();
   test_parse_false();
   test_parse_number();
+  test_parse_string();
+  test_parse_expect_value();
+  test_parse_invalid_value();
+  test_parse_root_not_singular();
   test_parse_number_too_big();
+  test_pasrse_missing_quotatioin_mark();
+  test_parse_invalid_string_escape();
+  test_parse_invalid_string_char();
+
+  test_access_null();
+  test_access_boolean();
+  test_access_number();
+  test_access_string();
 }
 
 int main() {
