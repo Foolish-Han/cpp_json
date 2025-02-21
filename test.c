@@ -142,6 +142,13 @@ static void test_parse_string() {
   TEST_STRING("Hello\nWorld", "\"Hello\\nWorld\"");
   TEST_STRING("\" \\ / \b \f \n \r \t",
               "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
+  TEST_STRING("Hello\0World", "\"Hello\\u0000World\"");
+  TEST_STRING("\x24", "\"\\u0024\"");         /* Dollar sign U+0024 */
+  TEST_STRING("\xC2\xA2", "\"\\u00A2\"");     /* Cents sign U+00A2 */
+  TEST_STRING("\xE2\x82\xAC", "\"\\u20AC\""); /* Euro sign U+20AC */
+  TEST_STRING("\xF0\x9D\x84\x9E",
+              "\"\\ud834\\udd1e\""); /* G clef sign U+1D11E */
+
 #endif
 }
 
@@ -196,6 +203,7 @@ static void test_pasrse_missing_quotatioin_mark() {
 }
 
 static void test_parse_invalid_string_escape() {
+  printf("test_parse_invalid_string_escape:\n");
 #if 1
   TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
   TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
@@ -205,10 +213,36 @@ static void test_parse_invalid_string_escape() {
 }
 
 static void test_parse_invalid_string_char() {
-#if 0
+  printf("test_parse_invalid_string_char:\n");
+#if 1
   TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
   TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
 #endif /* if 0 */
+}
+
+static void test_parse_invalid_unicode_hex() {
+  printf("test_parse_invalid_unicode_hex:\n");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u01\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u012\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u/000\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\uG000\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0/00\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u0G00\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u00/0\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u00G0\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u000/\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_HEX, "\"\\u000G\"");
+}
+
+static void test_parse_invalid_surrogate() {
+  printf("test_parse_invalid_surrogate:\n");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uDBFF\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\\\\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uDBFF\"");
+  TEST_ERROR(LEPT_PARSE_INVALID_UNICODE_SURROGATE, "\"\\uD800\\uE000\"");
 }
 
 static void test_access_null() {
@@ -253,6 +287,14 @@ static void test_access_string() {
   EXPECT_EQ_STRING("Hello", lept_get_string(&v), lept_get_string_length(&v));
   lept_free(&v);
 }
+
+static void test_access() {
+  test_access_null();
+  test_access_boolean();
+  test_access_number();
+  test_access_string();
+}
+
 static void test_parse() {
   test_parse_null();
   test_parse_true();
@@ -266,11 +308,10 @@ static void test_parse() {
   test_pasrse_missing_quotatioin_mark();
   test_parse_invalid_string_escape();
   test_parse_invalid_string_char();
+  test_parse_invalid_unicode_hex();
+  test_parse_invalid_surrogate();
 
-  test_access_null();
-  test_access_boolean();
-  test_access_number();
-  test_access_string();
+  test_access();
 }
 
 int main() {
