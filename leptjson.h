@@ -70,6 +70,7 @@ enum {
   } while (0)
 
 int lept_parse(lept_value *v, const char *json);
+char *lept_stringify(const lept_value *v, size_t *length);
 
 void lept_free(lept_value *v);
 
